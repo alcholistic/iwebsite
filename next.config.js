@@ -1,6 +1,5 @@
-/** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Add headers to allow Supabase connections
+  // This configuration fixes the "Refused to connect" CSP errors
   async headers() {
     return [
       {
@@ -8,7 +7,7 @@ const nextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' *.supabase.co; connect-src 'self' *.supabase.co ws://*.supabase.co wss://*.supabase.co;",
+            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' *.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; connect-src 'self' *.supabase.co ws://*.supabase.co wss://*.supabase.co;",
           },
         ],
       },

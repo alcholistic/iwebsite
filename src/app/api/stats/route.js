@@ -1,11 +1,12 @@
-// src/app/api/stats/route.js
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
+// This line forces Next.js to not try to pre-render this during the build
+export const dynamic = 'force-dynamic'; 
+
 export async function GET(request) {
     try {
-        // 1. Get the User Key from cookies
         const cookies = request.headers.get('cookie') || '';
         const userKeyMatch = cookies.split(';').find(c => c.trim().startsWith('user_key='));
         const userKey = userKeyMatch ? userKeyMatch.split('=')[1] : null;
@@ -14,7 +15,6 @@ export async function GET(request) {
             return NextResponse.json({ success: false, message: 'No user key found' }, { status: 401 });
         }
 
-        // 2. Load data
         const dataDir = path.join(process.cwd(), 'src', 'app', 'api', 'hits-data');
         const userFilePath = path.join(dataDir, `${userKey}.json`);
 

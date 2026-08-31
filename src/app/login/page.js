@@ -4,8 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 
-// --- CONFIGURATION ---
-// REPLACE THESE WITH YOUR ACTUAL ENV VARIABLES OR KEYS
+// Use your Render/Env vars here
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -22,33 +21,21 @@ export default function LoginPage() {
         setLoading(true);
         setError('');
 
-        // 1. Query your ACTUAL table: 'authorized_keys'
-        // Match against the ACTUAL column: 'key_value'
-        // Check that 'active' is true
+        // Query authorized_keys table, check active status
         const { data, error: dbError } = await supabase
             .from('authorized_keys')
-            .select('id, key_value')
+            .select('id')
             .eq('key_value', key)
-            .eq('active', true) // Only active keys can log in
-            .maybeSingle(); // Use maybeSingle to handle no results gracefully
+            .eq('active', true)
+            .maybeSingle();
 
         if (dbError || !data) {
-            // If it's a network error (CSP), show that. 
-            // If it's a no-result error, show invalid key.
-            if (dbError) {
-                console.error("Supabase Error:", dbError);
-                setError("Network Error: Could not connect to Supabase. Check CSP.");
-            } else {
-                setError("Invalid Key. Check your SQL table.");
-            }
+            setError("Invalid Key.");
             setLoading(false);
             return;
         }
 
-        // 2. Key is valid! Set cookie and redirect.
         document.cookie = `user_key=${key}; path=/; max-age=86400`;
-        
-        // 3. Redirect
         router.push('/dashboard');
     };
 

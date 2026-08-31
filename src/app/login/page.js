@@ -1,16 +1,13 @@
-// src/app/login/page.js
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-
-// Import Supabase Client (Make sure you have this installed: npm install @supabase/supabase-js)
 import { createClient } from '@supabase/supabase-js';
 
 // --- CONFIGURATION ---
-// Replace these with your actual Supabase URL and Anon Key from your Supabase Dashboard
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'YOUR_SUPABASE_URL';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
+// REPLACE THESE WITH YOUR ACTUAL ENV VARIABLES OR KEYS
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -25,25 +22,33 @@ export default function LoginPage() {
         setLoading(true);
         setError('');
 
-        // 1. Check if key exists in your Supabase table (e.g., 'products' or 'users')
-        // CHANGE 'products' TO YOUR ACTUAL TABLE NAME
-        // CHANGE 'key' TO YOUR ACTUAL COLUMN NAME
+        // 1. Query your ACTUAL table: 'authorized_keys'
+        // Match against the ACTUAL column: 'key_value'
+        // Check that 'active' is true
         const { data, error: dbError } = await supabase
-            .from('products') // Assuming you have a table named 'products' with a 'key' column
-            .select('id')
-            .eq('key', key) // Match the input key
-            .single();
+            .from('authorized_keys')
+            .select('id, key_value')
+            .eq('key_value', key)
+            .eq('active', true) // Only active keys can log in
+            .maybeSingle(); // Use maybeSingle to handle no results gracefully
 
         if (dbError || !data) {
-            setError('Invalid Key. Check your Supabase table.');
+            // If it's a network error (CSP), show that. 
+            // If it's a no-result error, show invalid key.
+            if (dbError) {
+                console.error("Supabase Error:", dbError);
+                setError("Network Error: Could not connect to Supabase. Check CSP.");
+            } else {
+                setError("Invalid Key. Check your SQL table.");
+            }
             setLoading(false);
             return;
         }
 
-        // 2. Key is valid! Set the cookie and redirect.
+        // 2. Key is valid! Set cookie and redirect.
         document.cookie = `user_key=${key}; path=/; max-age=86400`;
         
-        // 3. Redirect to Dashboard
+        // 3. Redirect
         router.push('/dashboard');
     };
 
@@ -75,10 +80,6 @@ export default function LoginPage() {
                         {loading ? 'Verifying...' : 'Initialize Connection'}
                     </button>
                 </form>
-                
-                <p className="text-xs text-slate-500 mt-4 text-center">
-                    Connected to Supabase. Redirecting to dashboard upon success.
-                </p>
             </div>
         </div>
     );

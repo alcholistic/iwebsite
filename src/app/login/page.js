@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 
-// Use your Render/Env vars here
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -21,20 +20,39 @@ export default function LoginPage() {
         setLoading(true);
         setError('');
 
-        // Query authorized_keys table, check active status
+        console.log("Attempting to login with key:", key);
+
+        // Query for the key. We select 'id' to see if we got anything back.
         const { data, error: dbError } = await supabase
             .from('authorized_keys')
-            .select('id')
+            .select('id, key_value')
             .eq('key_value', key)
+            // Check if 'active' is true. 
+            // WARNING: If 'active' is a STRING 'true' in your DB, change this to eq('active', 'true')
             .eq('active', true)
-            .maybeSingle();
+            .maybeSingle(); 
 
-        if (dbError || !data) {
-            setError("Invalid Key.");
+        // --- DEBUGGING ---
+        console.log("Supabase Response Data:", data);
+        console.log("Supabase Error:", dbError);
+
+        if (dbError) {
+            setError("Network Error: " + dbError.message);
             setLoading(false);
             return;
         }
 
+        // 1. Check if data is null (no result found)
+        // 2. Check if data is an empty array (returned as [])
+        // 3. Check if data is an object but empty
+        if (!data || (Array.isArray(data) && data.length === 0) || (data && Object.keys(data).length === 0)) {
+            setError("Invalid Key or Key is Inactive.");
+            setLoading(false);
+            return;
+        }
+
+        // Success!
+        console.log("Login Successful! Redirecting...");
         document.cookie = `user_key=${key}; path=/; max-age=86400`;
         router.push('/dashboard');
     };
